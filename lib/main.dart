@@ -1,0 +1,519 @@
+import 'package:flutter/material.dart';
+import 'database_service.dart';
+import 'assistant_engine.dart';
+import 'sync_service.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'EuroSpot',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF003399),
+          primary: const Color(0xFF003399),
+          secondary: const Color(0xFFFFCC00),
+        ),
+        useMaterial3: true,
+      ),
+      home: const EuroSpotMainScreen(),
+    );
+  }
+}
+
+typedef ProductItem = LocalDiscountItem;
+
+class EuroSpotMainScreen extends StatefulWidget {
+  const EuroSpotMainScreen({super.key});
+
+  @override
+  State<EuroSpotMainScreen> createState() => _EuroSpotMainScreenState();
+}
+
+class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
+  int _currentTabIndex = 0;
+  List<LocalDiscountItem> _discounts = [];
+  bool _isLoading = true;
+  bool _isSyncing = false;
+
+  Future<void> _syncDeals() async {
+    setState(() => _isSyncing = true);
+    final result = await SyncService.instance.fetchAndSyncDeals();
+    await _loadData();
+    if (mounted) {
+      setState(() => _isSyncing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message),
+          backgroundColor: result.success ? const Color(0xFF003399) : Colors.orange,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+    _autoSyncIfNeeded();
+  }
+
+  Future<void> _autoSyncIfNeeded() async {
+    final result = await SyncService.instance.checkAndAutoSync();
+    if (result != null && mounted) {
+      await _loadData();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Haftalık Katalog Güncellendi: ${result.message}'),
+          backgroundColor: const Color(0xFF003399),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final deals = await DatabaseService.instance.getAllDeals();
+      setState(() {
+        _discounts = deals;
+        _isLoading = false;
+      });
+    } catch (_) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  List<LocalDiscountItem> get _cart => _discounts.where((d) => d.inCart).toList();
+  double get _totalCartSavings => _cart.fold(0.0, (sum, item) => sum + item.savings);
+  double get _totalCartPrice => _cart.fold(0.0, (sum, item) => sum + item.discountedPrice);
+
+  Future<void> _toggleCart(LocalDiscountItem item) async {
+    final newStatus = !item.inCart;
+    if (item.id != null) {
+      await DatabaseService.instance.toggleCart(item.id!, newStatus);
+    }
+    setState(() {
+      final index = _discounts.indexWhere((d) => d.id == item.id);
+      if (index != -1) {
+        _discounts[index] = item.copyWith(inCart: newStatus);
+      }
+    });
+  }
+
+  void _showAddDealDialog() {
+    final nameCtrl = TextEditingController();
+    final storeCtrl = TextEditingController(text: 'Lidl');
+    final origCtrl = TextEditingController();
+    final discCtrl = TextEditingController();
+    final unitCtrl = TextEditingController(text: '1 Adet / 1kg');
+    final distCtrl = TextEditingController(text: '500m');
+    bool evening = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Yeni Fırsat Ekle'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Ürün Adı (ör. Vollmilch)')),
+                TextField(controller: storeCtrl, decoration: const InputDecoration(labelText: 'Mağaza (Lidl, Aldi, Rewe)')),
+                TextField(controller: origCtrl, decoration: const InputDecoration(labelText: 'Normal Fiyat (€)'), keyboardType: TextInputType.number),
+                TextField(controller: discCtrl, decoration: const InputDecoration(labelText: 'İndirimli Fiyat (€)'), keyboardType: TextInputType.number),
+                TextField(controller: unitCtrl, decoration: const InputDecoration(labelText: 'Birim (ör. 1L, 500g)')),
+                TextField(controller: distCtrl, decoration: const InputDecoration(labelText: 'Mesafe (ör. 400m)')),
+                CheckboxListTile(
+                  title: const Text('Akşam Stok Eritme Fırsatı'),
+                  value: evening,
+                  onChanged: (val) => setDialogState(() => evening = val ?? false),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('İptal')),
+            ElevatedButton(
+              onPressed: () async {
+                final orig = double.tryParse(origCtrl.text) ?? 0.0;
+                final disc = double.tryParse(discCtrl.text) ?? 0.0;
+                if (nameCtrl.text.isNotEmpty && orig > 0 && disc > 0) {
+                  final newItem = LocalDiscountItem(
+                    name: nameCtrl.text.trim(),
+                    store: storeCtrl.text.trim(),
+                    originalPrice: orig,
+                    discountedPrice: disc,
+                    unit: unitCtrl.text.trim(),
+                    distance: distCtrl.text.trim(),
+                    eveningClearance: evening,
+                  );
+                  await DatabaseService.instance.addDeal(newItem);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  await _loadData();
+                }
+              },
+              child: const Text('Kaydet'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showExplainDialog(LocalDiscountItem item) {
+    final explanation = LocalAssistantEngine.explainGermanLabel(item.name);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.translate, color: Color(0xFF003399)),
+            const SizedBox(width: 8),
+            Expanded(child: Text(item.name, style: const TextStyle(fontSize: 16))),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Akıllı Etiket Açıklaması:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(explanation, style: const TextStyle(fontSize: 14)),
+            const SizedBox(height: 12),
+            Text('Mağaza: ${item.store} • Birim: ${item.unit}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Kapat')),
+        ],
+      ),
+    );
+  }
+
+  void _showLicenseDisclaimerDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Lisans ve Yasal Uyarı'),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('EuroSpot v1.0.0 (Lemon Squeezy Tek Seferlik Sürüm)', style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: 8),
+              Text(
+                '• Lisans Durumu: Ömür Boyu Aktif (Tek Seferlik 4.99 € Satın Alma)\n'
+                '• Dijital Teslimat: Anında indirme ve çevrimdışı kullanım hakkı sağlandığından iade yapılamaz.\n'
+                '• Sorumluluk Reddi (Disclaimer): Fiyat ve ürün bilgileri yalnızca bilgilendirme ve yerel tasarruf simülasyonu amaçlıdır. Mağazaların anlık fiyat ve stok değişikliklerinden yazılım geliştiricisi sorumlu tutulamaz.\n'
+                '• Gizlilik: Tüm verileriniz cihazınızda yerel SQLite veritabanında saklanır. Hiçbir kişisel veri toplanmaz.',
+                style: TextStyle(fontSize: 12, height: 1.4),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Anladım')),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.euro, color: Color(0xFFFFCC00)),
+            SizedBox(width: 6),
+            Text('EuroSpot', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: _isSyncing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFFCC00)),
+                  )
+                : const Icon(Icons.sync, color: Color(0xFFFFCC00)),
+            tooltip: 'Canlı Katalogları Güncelle',
+            onPressed: _isSyncing ? null : _syncDeals,
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            tooltip: 'Diğer Seçenekler',
+            onSelected: (value) {
+              if (value == 'lisans') {
+                _showLicenseDisclaimerDialog();
+              } else if (value == 'gizlilik') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Verileriniz yalnızca bu cihazda yerel saklanır. Hesap veya kimlik gerekmez.'),
+                  ),
+                );
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              const PopupMenuItem<String>(
+                value: 'lisans',
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 20),
+                    SizedBox(width: 8),
+                    Text('Lisans ve Yasal Uyarı'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'gizlilik',
+                child: Row(
+                  children: [
+                    Icon(Icons.shield_outlined, size: 20),
+                    SizedBox(width: 8),
+                    Text('Gizlilik İlkeleri'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      body: _buildCurrentTab(),
+      floatingActionButton: _currentTabIndex == 0
+          ? FloatingActionButton.extended(
+              onPressed: _showAddDealDialog,
+              backgroundColor: const Color(0xFF003399),
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add),
+              label: const Text('Fırsat Ekle'),
+            )
+          : null,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentTabIndex,
+        onDestinationSelected: (index) => setState(() => _currentTabIndex = index),
+        destinations: [
+          const NavigationDestination(icon: Icon(Icons.local_offer), label: 'Fırsatlar'),
+          NavigationDestination(
+            icon: Badge(
+              label: Text('${_cart.length}'),
+              isLabelVisible: _cart.isNotEmpty,
+              child: const Icon(Icons.shopping_bag_outlined),
+            ),
+            label: 'Sepet & Tasarruf',
+          ),
+          const NavigationDestination(icon: Icon(Icons.smart_toy_outlined), label: 'Asistan'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCurrentTab() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    switch (_currentTabIndex) {
+      case 0:
+        return _buildDealsTab();
+      case 1:
+        return _buildCartTab();
+      case 2:
+        return _buildAssistantTab();
+      default:
+        return const SizedBox();
+    }
+  }
+
+  Widget _buildDealsTab() {
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF003399).withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF003399).withValues(alpha: 0.2)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.bolt, color: Color(0xFF003399)),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'EuroSpot Akıllı Radar: Çevrendeki en yüksek indirimler ve akşam stok eritme fırsatları listelendi.',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: _discounts.length,
+            itemBuilder: (context, index) {
+              final item = _discounts[index];
+              final inCart = _cart.contains(item);
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: ListTile(
+                  onTap: () => _showExplainDialog(item),
+                  leading: CircleAvatar(
+                    backgroundColor: item.eveningClearance ? Colors.orange.shade100 : Colors.blue.shade100,
+                    child: Icon(
+                      item.eveningClearance ? Icons.access_time_filled : Icons.storefront,
+                      color: item.eveningClearance ? Colors.orange.shade800 : const Color(0xFF003399),
+                    ),
+                  ),
+                  title: Row(
+                    children: [
+                      Expanded(child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold))),
+                      if (item.eveningClearance)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(color: Colors.orange.shade700, borderRadius: BorderRadius.circular(4)),
+                          child: const Text('Akşam İndirimi', style: TextStyle(color: Colors.white, fontSize: 10)),
+                        ),
+                    ],
+                  ),
+                  subtitle: Text('${item.store} • ${item.distance} • ${item.unit}'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text('€${item.originalPrice.toStringAsFixed(2)}', style: const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey, fontSize: 12)),
+                          Text('€${item.discountedPrice.toStringAsFixed(2)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16)),
+                        ],
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: Icon(inCart ? Icons.check_circle : Icons.add_circle_outline, color: inCart ? Colors.green : const Color(0xFF003399)),
+                        onPressed: () => _toggleCart(item),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCartTab() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          Card(
+            color: Colors.green.shade50,
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.green.shade300)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Column(
+                    children: [
+                      const Text('Toplam Tutar', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      Text('€${_totalCartPrice.toStringAsFixed(2)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  Container(height: 35, width: 1, color: Colors.green.shade300),
+                  Column(
+                    children: [
+                      const Text('Cebinde Kalan', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      Text('€${_totalCartSavings.toStringAsFixed(2)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: _cart.isEmpty
+                ? const Center(child: Text('Sepetiniz boş. Fırsatlar sekmesinden ürün ekleyebilirsiniz.'))
+                : ListView.builder(
+                    itemCount: _cart.length,
+                    itemBuilder: (context, index) {
+                      final item = _cart[index];
+                      return ListTile(
+                        leading: const Icon(Icons.check, color: Colors.green),
+                        title: Text(item.name),
+                        subtitle: Text('${item.store} • Tasarruf: €${item.savings.toStringAsFixed(2)}'),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                          onPressed: () => _toggleCart(item),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAssistantTab() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.offline_bolt, color: Color(0xFF003399)),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'EuroSpot Yerel Asistan: Tamamen cihaz üzerinde çevrimdışı çalışır. Verileriniz sunuculara gitmez.',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: Center(
+              child: SingleChildScrollView(
+                child: Text(
+                  LocalAssistantEngine.generateRecommendation(_discounts, _cart),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 15, height: 1.5),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
