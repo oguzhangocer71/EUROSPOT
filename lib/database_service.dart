@@ -107,48 +107,8 @@ class DatabaseService {
       )
     ''');
 
-    final initialDeals = [
-      LocalDiscountItem(
-        name: 'Müllermilch Schoko/Erdbeer',
-        store: 'Lidl',
-        originalPrice: 1.39,
-        discountedPrice: 0.88,
-        unit: '500ml (1.76 €/L)',
-        distance: '450m',
-        eveningClearance: false,
-      ),
-      LocalDiscountItem(
-        name: 'Barissimo Löslicher Kaffee Gold',
-        store: 'Aldi Süd',
-        originalPrice: 5.49,
-        discountedPrice: 4.15,
-        unit: '200g (20.75 €/kg)',
-        distance: '600m',
-        eveningClearance: false,
-      ),
-      LocalDiscountItem(
-        name: 'Arla Buko Der Sahnige',
-        store: 'Rewe',
-        originalPrice: 2.19,
-        discountedPrice: 1.29,
-        unit: '200g',
-        distance: '850m',
-        eveningClearance: true,
-      ),
-      LocalDiscountItem(
-        name: 'Bio Vollmilch 3.8% H-Milch (6x1L)',
-        store: 'Lidl',
-        originalPrice: 6.90,
-        discountedPrice: 5.95,
-        unit: '6x1L (0.99 €/L)',
-        distance: '450m',
-        eveningClearance: false,
-      ),
-    ];
-
-    for (final deal in initialDeals) {
-      await db.insert('deals', deal.toMap());
-    }
+    // Ilk surum urunleri kaldirildi; tum veriler guncel 1000 firsatlik katalogdan alinir
+    // Tablo baslangicta temiz olusur.
   }
 
   Future<List<LocalDiscountItem>> getAllDeals() async {
@@ -175,6 +135,11 @@ class DatabaseService {
   Future<int> deleteDeal(int id) async {
     final db = await database;
     return await db.delete('deals', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> clearAllDeals() async {
+    final db = await database;
+    return await db.delete('deals');
   }
 
   Future<int> syncDeals(List<LocalDiscountItem> incomingDeals) async {

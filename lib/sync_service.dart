@@ -61,6 +61,11 @@ class SyncService {
           );
         }).toList();
 
+        // Eski veya ilk surum kalintilarini temizleyip yeni katalog verilerini sifirdan temiz yukler
+        if (items.length > 50) {
+          await DatabaseService.instance.clearAllDeals();
+        }
+
         final updated = await DatabaseService.instance.syncDeals(items);
         return SyncResult(
           success: true,

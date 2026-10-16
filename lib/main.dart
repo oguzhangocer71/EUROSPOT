@@ -65,12 +65,14 @@ class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
   ];
 
   static const Map<String, List<String>> _categoryKeywords = {
-    'Süt & Kahvaltılık': ['milch', 'süt', 'gouda', 'kaas', 'peynir', 'cheese', 'quark', 'fromage', 'camembert', 'twaróg', 'eier', 'yumurta', 'butter', 'nutella', 'waffle', 'stroopwafel', 'croissant', 'bergkäse', 'parmigiano'],
-    'Et & Şarküteri': ['hähnchen', 'tavuk', 'fleisch', 'et', 'hackfleisch', 'kıyma', 'jamón', 'kiełbasa', 'sosis', 'rindfleisch', 'dana', 'filet'],
-    'Fırın & Ekmek': ['brot', 'ekmek', 'baguette', 'croissant', 'waffle'],
-    'Temel Gıda & Makarna': ['spaghetti', 'makarna', 'barilla', 'reis', 'pirinç', 'öl', 'oliva', 'zeytinyağı', 'zucker', 'şeker', 'mehl', 'un'],
-    'İçecek & Kahve': ['kaffee', 'kahve', 'caffe', 'lavazza', 'espresso', 'wasser', 'su', 'mineralwasser', 'cola', 'çay', 'tee', 'saft', 'meyve suyu'],
-    'Temizlik & Ev': ['ariel', 'pods', 'deterjan', 'yıkama', 'reiniger', 'sabun', 'şampuan', 'persil', 'finish'],
+    'Süt & Kahvaltılık': ['milch', 'süt', 'gouda', 'kaas', 'peynir', 'cheese', 'quark', 'fromage', 'camembert', 'twaróg', 'eier', 'yumurta', 'butter', 'nutella', 'waffle', 'stroopwafel', 'croissant', 'bergkäse', 'parmigiano', 'joghurt', 'yoğurt'],
+    'Et & Şarküteri': ['hähnchen', 'tavuk', 'fleisch', 'et', 'hackfleisch', 'kıyma', 'jamón', 'kiełbasa', 'sosis', 'rindfleisch', 'dana', 'filet', 'steak', 'lachs', 'somon', 'bratwurst', 'schinken'],
+    'Meyve & Sebze': ['bananen', 'muz', 'avocado', 'heidelbeeren', 'tomaten', 'domates', 'salat', 'äpfel', 'elma', 'gurken', 'salatalık', 'kartoffeln', 'patates', 'clementinen', 'mandalina', 'champignons', 'mantar'],
+    'Fırın & Ekmek': ['brot', 'ekmek', 'baguette', 'croissant', 'waffle', 'toast', 'brezeln', 'donuts'],
+    'Temel Gıda & Makarna': ['spaghetti', 'makarna', 'barilla', 'reis', 'pirinç', 'öl', 'yağ', 'oliva', 'zeytinyağı', 'zucker', 'şeker', 'mehl', 'un', 'linsen', 'mercimek', 'thunfisch', 'ton balığı', 'kichererbsen', 'nohut', 'mutti'],
+    'İçecek & Kahve': ['kaffee', 'kahve', 'caffe', 'lavazza', 'espresso', 'wasser', 'su', 'mineralwasser', 'cola', 'çay', 'tee', 'saft', 'meyve suyu', 'bier', 'bira', 'red bull', 'smoothie'],
+    'Atıştırmalık & Tatlı': ['schokolade', 'çikolata', 'pringles', 'cips', 'chips', 'haribo', 'rocher', 'kinder', 'tatlı', 'bisküvi'],
+    'Temizlik & Ev': ['ariel', 'pods', 'deterjan', 'yıkama', 'reiniger', 'sabun', 'şampuan', 'persil', 'finish', 'spülmittel', 'lenor', 'colgate', 'nivea', 'toilettenpapier', 'domestos'],
   };
 
   String _detectCategory(String productName) {
@@ -125,7 +127,21 @@ class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
 
   Future<void> _loadData() async {
     try {
+      // Eger veritabaninda sadece eski 4 ilk surum urun kalmissa otomatik guncelle
       final deals = await DatabaseService.instance.getAllDeals();
+      final hasOldInitial = deals.any((d) => d.name == 'Müllermilch Schoko/Erdbeer' || d.name == 'Barissimo Löslicher Kaffee Gold');
+      if (hasOldInitial && deals.length <= 10) {
+        await DatabaseService.instance.clearAllDeals();
+        await SyncService.instance.fetchAndSyncDeals();
+        final freshDeals = await DatabaseService.instance.getAllDeals();
+        if (mounted) {
+          setState(() {
+            _discounts = freshDeals;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
       setState(() {
         _discounts = deals;
         _isLoading = false;
