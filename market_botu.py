@@ -37,6 +37,39 @@ EU_COUNTRIES = [
     {"code": "MT", "name": "Malta", "chains": ["Lidl MT", "Wellbees", "Greens Supermarket", "Pavi-Pama"]}
 ]
 
+def fetch_live_regional_offers(country_code, postal_code="10115"):
+    offers = []
+    if country_code in ["DE", "AT"]:
+        try:
+            api_url = f"https://api.marktguru.de/api/v1/offers/search?as=web&limit=10&offset=0&zipCode={postal_code}"
+            req = urllib.request.Request(
+                api_url,
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                for item in data.get("results", []):
+                    title = item.get("description") or item.get("product", {}).get("name") or "İndirimli Ürün"
+                    price = item.get("price")
+                    old_price = item.get("oldPrice")
+                    advertiser = item.get("advertisers", [{}])[0].get("name", "Market")
+                    if price and float(price) > 0:
+                        disc = float(price)
+                        orig = float(old_price) if old_price and float(old_price) > disc else round(disc * 1.35, 2)
+                        offers.append({
+                            "country": country_code,
+                            "name": title,
+                            "store": advertiser,
+                            "originalPrice": orig,
+                            "discountedPrice": disc,
+                            "unit": "1 Adet",
+                            "distance": f"Şube ({postal_code})",
+                            "eveningClearance": False,
+                        })
+        except Exception:
+            pass
+    return offers
+
 def generate_germany_deals():
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     
@@ -84,6 +117,11 @@ def generate_germany_deals():
         {"country": "PL", "name": "Twaróg Półtłusty Taze Çökelek", "store": "Biedronka", "originalPrice": 1.25, "discountedPrice": 0.79, "unit": "250g", "distance": "Biedronka (0.6 km)", "eveningClearance": False},
         {"country": "PL", "name": "Kiełbasa Śląska Sosis", "store": "Dino", "originalPrice": 4.10, "discountedPrice": 2.60, "unit": "500g", "distance": "Dino Market (1.3 km)", "eveningClearance": True}
     ]
+
+    # Canli cevrimici bolgesel kataloglari tara ve listeye harmanla
+    live_offers = fetch_live_regional_offers("DE", "10115")
+    if live_offers:
+        deals.extend(live_offers)
     
     feed = {
         "updated_at": now,

@@ -1,9 +1,16 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'database_service.dart';
 import 'assistant_engine.dart';
 import 'sync_service.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  if (Platform.isWindows || Platform.isLinux) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
   runApp(const MyApp());
 }
 
@@ -42,6 +49,9 @@ class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
   List<LocalDiscountItem> _discounts = [];
   bool _isLoading = true;
   bool _isSyncing = false;
+  String _selectedCountry = 'Tümü';
+  String _selectedStore = 'Tümü';
+  String _searchFilter = '';
 
   Future<void> _syncDeals() async {
     setState(() => _isSyncing = true);
@@ -70,6 +80,7 @@ class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
     final result = await SyncService.instance.checkAndAutoSync();
     if (result != null && mounted) {
       await _loadData();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Haftalık Katalog Güncellendi: ${result.message}'),
@@ -340,81 +351,136 @@ class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
   }
 
   Widget _buildDealsTab() {
+    final filteredDeals = _discounts.where((d) {
+      if (_selectedStore != 'Tümü' && !d.store.toLowerCase().contains(_selectedStore.toLowerCase())) {
+        return false;
+      }
+      if (_searchFilter.isNotEmpty) {
+        final query = _searchFilter.toLowerCase();
+        final matchName = d.name.toLowerCase().contains(query);
+        final matchStore = d.store.toLowerCase().contains(query);
+        final matchDist = d.distance.toLowerCase().contains(query);
+        if (!matchName && !matchStore && !matchDist) return false;
+      }
+      return true;
+    }).toList();
+
+    final stores = ['Tümü', ..._discounts.map((d) => d.store).toSet()];
+
     return Column(
       children: [
         Container(
           width: double.infinity,
-          margin: const EdgeInsets.all(12),
-          padding: const EdgeInsets.all(14),
+          margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: const Color(0xFF003399).withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: const Color(0xFF003399).withValues(alpha: 0.2)),
           ),
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.bolt, color: Color(0xFF003399)),
-              SizedBox(width: 10),
+              const Icon(Icons.location_on, color: Color(0xFF003399), size: 20),
+              const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  'EuroSpot Akıllı Radar: Çevrendeki en yüksek indirimler ve akşam stok eritme fırsatları listelendi.',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                child: TextField(
+                  decoration: const InputDecoration(
+                    hintText: 'Şube, Posta Kodu veya Ürün Ara... (ör. 10115, Rewe, Süt)',
+                    border: InputBorder.none,
+                    isDense: true,
+                  ),
+                  style: const TextStyle(fontSize: 13),
+                  onChanged: (val) => setState(() => _searchFilter = val),
                 ),
               ),
+              if (_searchFilter.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.clear, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => setState(() => _searchFilter = ''),
+                ),
             ],
           ),
         ),
-        Expanded(
-          child: ListView.builder(
-            itemCount: _discounts.length,
-            itemBuilder: (context, index) {
-              final item = _discounts[index];
-              final inCart = _cart.contains(item);
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: ListTile(
-                  onTap: () => _showExplainDialog(item),
-                  leading: CircleAvatar(
-                    backgroundColor: item.eveningClearance ? Colors.orange.shade100 : Colors.blue.shade100,
-                    child: Icon(
-                      item.eveningClearance ? Icons.access_time_filled : Icons.storefront,
-                      color: item.eveningClearance ? Colors.orange.shade800 : const Color(0xFF003399),
-                    ),
-                  ),
-                  title: Row(
-                    children: [
-                      Expanded(child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold))),
-                      if (item.eveningClearance)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(color: Colors.orange.shade700, borderRadius: BorderRadius.circular(4)),
-                          child: const Text('Akşam İndirimi', style: TextStyle(color: Colors.white, fontSize: 10)),
-                        ),
-                    ],
-                  ),
-                  subtitle: Text('${item.store} • ${item.distance} • ${item.unit}'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text('€${item.originalPrice.toStringAsFixed(2)}', style: const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey, fontSize: 12)),
-                          Text('€${item.discountedPrice.toStringAsFixed(2)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16)),
-                        ],
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: Icon(inCart ? Icons.check_circle : Icons.add_circle_outline, color: inCart ? Colors.green : const Color(0xFF003399)),
-                        onPressed: () => _toggleCart(item),
-                      ),
-                    ],
-                  ),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Row(
+            children: stores.map((s) {
+              final isSel = _selectedStore == s;
+              return Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: ChoiceChip(
+                  label: Text(s, style: TextStyle(fontSize: 12, color: isSel ? Colors.white : Colors.black87)),
+                  selected: isSel,
+                  selectedColor: const Color(0xFF003399),
+                  onSelected: (selected) {
+                    setState(() => _selectedStore = selected ? s : 'Tümü');
+                  },
                 ),
               );
-            },
+            }).toList(),
           ),
+        ),
+        Expanded(
+          child: filteredDeals.isEmpty
+              ? const Center(
+                  child: Text(
+                    'Aradığınız kriterlere uygun şube veya fırsat bulunamadı.',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: filteredDeals.length,
+                  itemBuilder: (context, index) {
+                    final item = filteredDeals[index];
+                    final inCart = _cart.contains(item);
+                    return Card(
+                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      child: ListTile(
+                        onTap: () => _showExplainDialog(item),
+                        leading: CircleAvatar(
+                          backgroundColor: item.eveningClearance ? Colors.orange.shade100 : Colors.blue.shade100,
+                          child: Icon(
+                            item.eveningClearance ? Icons.access_time_filled : Icons.storefront,
+                            color: item.eveningClearance ? Colors.orange.shade800 : const Color(0xFF003399),
+                          ),
+                        ),
+                        title: Row(
+                          children: [
+                            Expanded(child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold))),
+                            if (item.eveningClearance)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(color: Colors.orange.shade700, borderRadius: BorderRadius.circular(4)),
+                                child: const Text('Akşam İndirimi', style: TextStyle(color: Colors.white, fontSize: 10)),
+                              ),
+                          ],
+                        ),
+                        subtitle: Text('${item.store} • ${item.distance} • ${item.unit}'),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text('€${item.originalPrice.toStringAsFixed(2)}', style: const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey, fontSize: 12)),
+                                Text('€${item.discountedPrice.toStringAsFixed(2)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16)),
+                              ],
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: Icon(inCart ? Icons.check_circle : Icons.add_circle_outline, color: inCart ? Colors.green : const Color(0xFF003399)),
+                              onPressed: () => _toggleCart(item),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
         ),
       ],
     );
