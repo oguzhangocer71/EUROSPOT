@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-16 18:38",
+  "updated_at": "2026-10-16 20:10",
   "region": "European Union (EU-27)",
   "currency": "EUR",
   "supported_countries_count": 27,
@@ -315,7 +315,7 @@
       ]
     }
   ],
-  "deals_count": 26,
+  "deals_count": 47,
   "deals": [
     {
       "country": "DE",
@@ -359,11 +359,11 @@
     },
     {
       "country": "DE",
-      "name": "Lavazza Caffe Crema Classico",
+      "name": "Lavazza Caffe Crema Classico Kahve",
       "store": "Rewe",
       "originalPrice": 15.99,
       "discountedPrice": 9.99,
-      "unit": "1000g",
+      "unit": "1000g Çekirdek",
       "distance": "Rewe Center (2.1 km)",
       "eveningClearance": false
     },
@@ -395,6 +395,136 @@
       "discountedPrice": 8.49,
       "unit": "38 Yıkama",
       "distance": "Rewe Center (2.1 km)",
+      "eveningClearance": false
+    },
+    {
+      "country": "DE",
+      "name": "Kerrygold Original Irische Butter",
+      "store": "Kaufland",
+      "originalPrice": 3.49,
+      "discountedPrice": 1.89,
+      "unit": "250g",
+      "distance": "Kaufland (1.8 km)",
+      "eveningClearance": false
+    },
+    {
+      "country": "DE",
+      "name": "Coca-Cola Original / Zero 1.25L",
+      "store": "Penny",
+      "originalPrice": 1.49,
+      "discountedPrice": 0.89,
+      "unit": "1.25L",
+      "distance": "Penny Markt (0.9 km)",
+      "eveningClearance": false
+    },
+    {
+      "country": "DE",
+      "name": "Milka Alpenmilch Çikolata Çeşitleri",
+      "store": "Edeka",
+      "originalPrice": 1.49,
+      "discountedPrice": 0.79,
+      "unit": "100g",
+      "distance": "Edeka Center (1.4 km)",
+      "eveningClearance": false
+    },
+    {
+      "country": "DE",
+      "name": "Tchibo Feine Milde Filtre Kahve",
+      "store": "Netto",
+      "originalPrice": 6.99,
+      "discountedPrice": 4.44,
+      "unit": "500g",
+      "distance": "Netto Filiale (1.1 km)",
+      "eveningClearance": false
+    },
+    {
+      "country": "DE",
+      "name": "Bio Eier Freilandhaltung (Gezen Tavuk)",
+      "store": "Aldi Süd",
+      "originalPrice": 3.29,
+      "discountedPrice": 2.19,
+      "unit": "10 Adet",
+      "distance": "Aldi Süd (1.5 km)",
+      "eveningClearance": false
+    },
+    {
+      "country": "DE",
+      "name": "Müller Joghurt mit der Ecke",
+      "store": "Rewe",
+      "originalPrice": 0.89,
+      "discountedPrice": 0.44,
+      "unit": "150g",
+      "distance": "Rewe City (0.8 km)",
+      "eveningClearance": true
+    },
+    {
+      "country": "DE",
+      "name": "Ritter Sport Bunte Vielfalt",
+      "store": "Lidl",
+      "originalPrice": 1.49,
+      "discountedPrice": 0.88,
+      "unit": "100g",
+      "distance": "Lidl Filiale (1.2 km)",
+      "eveningClearance": false
+    },
+    {
+      "country": "DE",
+      "name": "Persil Universal Kraft-Gel Deterjan",
+      "store": "Kaufland",
+      "originalPrice": 14.99,
+      "discountedPrice": 9.99,
+      "unit": "50 Yıkama",
+      "distance": "Kaufland (1.8 km)",
+      "eveningClearance": false
+    },
+    {
+      "country": "DE",
+      "name": "Thomy Reines Sonnenblumenöl (Ayçiçek)",
+      "store": "Penny",
+      "originalPrice": 2.79,
+      "discountedPrice": 1.79,
+      "unit": "750ml",
+      "distance": "Penny Markt (0.9 km)",
+      "eveningClearance": false
+    },
+    {
+      "country": "DE",
+      "name": "Chiquita Premium Muz",
+      "store": "Edeka",
+      "originalPrice": 2.29,
+      "discountedPrice": 1.49,
+      "unit": "1 kg",
+      "distance": "Edeka Center (1.4 km)",
+      "eveningClearance": false
+    },
+    {
+      "country": "DE",
+      "name": "Philadelphia Frischkäse Sade",
+      "store": "Aldi Nord",
+      "originalPrice": 2.29,
+      "discountedPrice": 1.25,
+      "unit": "175g",
+      "distance": "Aldi Nord (2.8 km)",
+      "eveningClearance": false
+    },
+    {
+      "country": "DE",
+      "name": "Wagner Steinofen Pizza Salami/Mozzarella",
+      "store": "Rewe",
+      "originalPrice": 3.49,
+      "discountedPrice": 1.77,
+      "unit": "350g",
+      "distance": "Rewe City (0.8 km)",
+      "eveningClearance": true
+    },
+    {
+      "country": "DE",
+      "name": "Haribo Goldbären Jelibon XL",
+      "store": "Lidl",
+      "originalPrice": 1.39,
+      "discountedPrice": 0.79,
+      "unit": "175g",
+      "distance": "Lidl Filiale (1.2 km)",
       "eveningClearance": false
     },
     {
@@ -438,6 +568,26 @@
       "eveningClearance": false
     },
     {
+      "country": "FR",
+      "name": "President Beurre Demi-Sel (Tuzlu Tereyağ)",
+      "store": "Monoprix",
+      "originalPrice": 3.45,
+      "discountedPrice": 2.19,
+      "unit": "250g",
+      "distance": "Monoprix (1.5 km)",
+      "eveningClearance": false
+    },
+    {
+      "country": "FR",
+      "name": "Bonne Maman Çilek Reçeli",
+      "store": "Intermarché",
+      "originalPrice": 2.75,
+      "discountedPrice": 1.85,
+      "unit": "370g",
+      "distance": "Intermarché (2.0 km)",
+      "eveningClearance": false
+    },
+    {
       "country": "NL",
       "name": "Goudse Belegen Kaas (Gouda)",
       "store": "Albert Heijn",
@@ -468,6 +618,26 @@
       "eveningClearance": true
     },
     {
+      "country": "NL",
+      "name": "Calvé Pindakaas Fıstık Ezmesi",
+      "store": "Albert Heijn",
+      "originalPrice": 3.99,
+      "discountedPrice": 2.69,
+      "unit": "350g",
+      "distance": "Albert Heijn XL (0.9 km)",
+      "eveningClearance": false
+    },
+    {
+      "country": "NL",
+      "name": "Heineken Premium Pilsener 6x0.33L",
+      "store": "Dirk",
+      "originalPrice": 6.89,
+      "discountedPrice": 4.99,
+      "unit": "6'lı Kutu",
+      "distance": "Dirk Super (1.6 km)",
+      "eveningClearance": false
+    },
+    {
       "country": "BE",
       "name": "Belgian Waffles (Liege Şekerli)",
       "store": "Delhaize",
@@ -485,6 +655,16 @@
       "discountedPrice": 2.39,
       "unit": "2x150g",
       "distance": "Colruyt Meest (2.5 km)",
+      "eveningClearance": false
+    },
+    {
+      "country": "BE",
+      "name": "Lotus Biscoff Orijinal Bisküvi",
+      "store": "Carrefour BE",
+      "originalPrice": 2.19,
+      "discountedPrice": 1.29,
+      "unit": "250g",
+      "distance": "Carrefour Express (0.7 km)",
       "eveningClearance": false
     },
     {
@@ -518,6 +698,16 @@
       "eveningClearance": true
     },
     {
+      "country": "AT",
+      "name": "Almdudler Orijinal Gazoz 1L",
+      "store": "Penny AT",
+      "originalPrice": 1.59,
+      "discountedPrice": 0.99,
+      "unit": "1 Litre",
+      "distance": "Penny Filiale (1.4 km)",
+      "eveningClearance": false
+    },
+    {
       "country": "IT",
       "name": "Parmigiano Reggiano DOP 24 Ay",
       "store": "Conad",
@@ -538,6 +728,16 @@
       "eveningClearance": false
     },
     {
+      "country": "IT",
+      "name": "Mulino Bianco Baiocchi Fındıklı Bisküvi",
+      "store": "Esselunga",
+      "originalPrice": 2.99,
+      "discountedPrice": 1.89,
+      "unit": "260g",
+      "distance": "Esselunga (1.9 km)",
+      "eveningClearance": false
+    },
+    {
       "country": "ES",
       "name": "Jamón Serrano Reserva Dilimli",
       "store": "Mercadona",
@@ -555,6 +755,16 @@
       "discountedPrice": 5.95,
       "unit": "1 Litre",
       "distance": "Carrefour Hyper (2.2 km)",
+      "eveningClearance": false
+    },
+    {
+      "country": "ES",
+      "name": "Queso Manchego Curado",
+      "store": "Dia",
+      "originalPrice": 4.5,
+      "discountedPrice": 2.99,
+      "unit": "250g",
+      "distance": "Dia Maxi (1.2 km)",
       "eveningClearance": false
     },
     {
