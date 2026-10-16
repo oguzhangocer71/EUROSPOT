@@ -4,6 +4,8 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'database_service.dart';
 import 'assistant_engine.dart';
 import 'sync_service.dart';
+import 'localization_service.dart';
+import 'store_locator_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -293,14 +295,19 @@ class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFFCC00)),
                   )
                 : const Icon(Icons.sync, color: Color(0xFFFFCC00)),
-            tooltip: 'Canlı Katalogları Güncelle',
+            tooltip: LocalizationService.instance.strings.syncTooltip,
             onPressed: _isSyncing ? null : _syncDeals,
           ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
-            tooltip: 'Diğer Seçenekler',
+            tooltip: 'Menü & Dil',
             onSelected: (value) {
-              if (value == 'lisans') {
+              if (value.startsWith('lang_')) {
+                final lang = value.replaceFirst('lang_', '');
+                setState(() {
+                  LocalizationService.instance.setLanguage(lang);
+                });
+              } else if (value == 'lisans') {
                 _showLicenseDisclaimerDialog();
               } else if (value == 'gizlilik') {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -311,23 +318,60 @@ class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
               }
             },
             itemBuilder: (BuildContext context) => [
-              const PopupMenuItem<String>(
-                value: 'lisans',
+              PopupMenuItem<String>(
+                value: 'lang_TR',
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, size: 20),
-                    SizedBox(width: 8),
-                    Text('Lisans ve Yasal Uyarı'),
+                    const Text('🇹🇷  Türkçe'),
+                    if (LocalizationService.instance.currentLanguage == 'TR') ...[
+                      const Spacer(),
+                      const Icon(Icons.check, size: 18, color: Colors.green),
+                    ],
                   ],
                 ),
               ),
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
+                value: 'lang_EN',
+                child: Row(
+                  children: [
+                    const Text('🇬🇧  English'),
+                    if (LocalizationService.instance.currentLanguage == 'EN') ...[
+                      const Spacer(),
+                      const Icon(Icons.check, size: 18, color: Colors.green),
+                    ],
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'lang_DE',
+                child: Row(
+                  children: [
+                    const Text('🇩🇪  Deutsch'),
+                    if (LocalizationService.instance.currentLanguage == 'DE') ...[
+                      const Spacer(),
+                      const Icon(Icons.check, size: 18, color: Colors.green),
+                    ],
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem<String>(
+                value: 'lisans',
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, size: 20),
+                    const SizedBox(width: 8),
+                    Text(LocalizationService.instance.strings.licenseDisclaimer),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
                 value: 'gizlilik',
                 child: Row(
                   children: [
-                    Icon(Icons.shield_outlined, size: 20),
-                    SizedBox(width: 8),
-                    Text('Gizlilik İlkeleri'),
+                    const Icon(Icons.shield_outlined, size: 20),
+                    const SizedBox(width: 8),
+                    Text(LocalizationService.instance.strings.privacyPolicy),
                   ],
                 ),
               ),
@@ -342,23 +386,24 @@ class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
               backgroundColor: const Color(0xFF003399),
               foregroundColor: Colors.white,
               icon: const Icon(Icons.add),
-              label: const Text('Fırsat Ekle'),
+              label: Text(LocalizationService.instance.strings.addDeal),
             )
           : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentTabIndex,
         onDestinationSelected: (index) => setState(() => _currentTabIndex = index),
         destinations: [
-          const NavigationDestination(icon: Icon(Icons.local_offer), label: 'Fırsatlar'),
+          NavigationDestination(icon: const Icon(Icons.local_offer), label: LocalizationService.instance.strings.dealsTab),
           NavigationDestination(
             icon: Badge(
               label: Text('${_cart.length}'),
               isLabelVisible: _cart.isNotEmpty,
               child: const Icon(Icons.shopping_bag_outlined),
             ),
-            label: 'Sepet & Tasarruf',
+            label: LocalizationService.instance.strings.cartTab,
           ),
-          const NavigationDestination(icon: Icon(Icons.smart_toy_outlined), label: 'Asistan'),
+          NavigationDestination(icon: const Icon(Icons.map_outlined), label: LocalizationService.instance.strings.mapTab),
+          NavigationDestination(icon: const Icon(Icons.smart_toy_outlined), label: LocalizationService.instance.strings.assistantTab),
         ],
       ),
     );
@@ -374,6 +419,15 @@ class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
       case 1:
         return _buildCartTab();
       case 2:
+        return StoreLocatorScreen(
+          onSelectStore: (storeName) {
+            setState(() {
+              _selectedStore = storeName;
+              _currentTabIndex = 0;
+            });
+          },
+        );
+      case 3:
         return _buildAssistantTab();
       default:
         return const SizedBox();

@@ -12,12 +12,13 @@ import 'package:eurospot/database_service.dart';
 import 'package:eurospot/assistant_engine.dart';
 
 void main() {
-  testWidgets('EuroSpot smoke test', (WidgetTester tester) async {
+  testWidgets('EuroSpot smoke test ve Coklu Dil / Magaza Haritasi Tab Testi', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
 
     expect(find.text('EuroSpot'), findsOneWidget);
     expect(find.text('Fırsatlar'), findsOneWidget);
     expect(find.text('Sepet & Tasarruf'), findsOneWidget);
+    expect(find.text('Mağaza Haritası'), findsOneWidget);
     expect(find.text('Asistan'), findsOneWidget);
   });
 
