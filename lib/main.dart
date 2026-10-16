@@ -51,10 +51,42 @@ class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
   List<LocalDiscountItem> _discounts = [];
   bool _isLoading = true;
   bool _isSyncing = false;
+  String _selectedCountry = 'Tümü';
   String _selectedStore = 'Tümü';
   String _selectedCategory = 'Tümü';
   String _selectedPriceRange = 'Tümü';
   String _searchFilter = '';
+
+  static const Map<String, String> _countryMap = {
+    'Tümü': '🇪🇺 Tümü',
+    'DE': '🇩🇪 Almanya',
+    'FR': '🇫🇷 Fransa',
+    'NL': '🇳🇱 Hollanda',
+    'BE': '🇧🇪 Belçika',
+    'AT': '🇦🇹 Avusturya',
+    'IT': '🇮🇹 İtalya',
+    'ES': '🇪🇸 İspanya',
+    'PL': '🇵🇱 Polonya',
+    'SE': '🇸🇪 İsveç',
+    'DK': '🇩🇰 Danimarka',
+    'FI': '🇫🇮 Finlandiya',
+    'IE': '🇮🇪 İrlanda',
+    'PT': '🇵🇹 Portekiz',
+    'GR': '🇬🇷 Yunanistan',
+    'CZ': '🇨🇿 Çekya',
+    'HU': '🇭🇺 Macaristan',
+    'RO': '🇷🇴 Romanya',
+    'BG': '🇧🇬 Bulgaristan',
+    'HR': '🇭🇷 Hırvatistan',
+    'SK': '🇸🇰 Slovakya',
+    'SI': '🇸🇮 Slovenya',
+    'LU': '🇱🇺 Lüksemburg',
+    'EE': '🇪🇪 Estonya',
+    'LV': '🇱🇻 Letonya',
+    'LT': '🇱🇹 Litvanya',
+    'CY': '🇨🇾 Kıbrıs',
+    'MT': '🇲🇹 Malta',
+  };
 
   static const List<String> _priceRanges = [
     'Tümü',
@@ -451,7 +483,15 @@ class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
   }
 
   Widget _buildDealsTab() {
+    // Seçili ülkenin bayrak karakterini veya kodunu bul
+    final countryFlag = _selectedCountry == 'Tümü' ? '' : (_countryMap[_selectedCountry]?.split(' ').first ?? '');
+
     final filteredDeals = _discounts.where((d) {
+      if (_selectedCountry != 'Tümü') {
+        if (!d.name.contains(countryFlag) && !d.store.contains(countryFlag)) {
+          return false;
+        }
+      }
       if (_selectedStore != 'Tümü' && !d.store.toLowerCase().contains(_selectedStore.toLowerCase())) {
         return false;
       }
@@ -481,7 +521,11 @@ class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
       return true;
     }).toList();
 
-    final stores = ['Tümü', ..._discounts.map((d) => d.store).toSet()];
+    // Seçili ülkeye ait mağazaları dinamik filtrele
+    final relevantDealsForStores = _selectedCountry == 'Tümü'
+        ? _discounts
+        : _discounts.where((d) => d.name.contains(countryFlag) || d.store.contains(countryFlag)).toList();
+    final stores = ['Tümü', ...relevantDealsForStores.map((d) => d.store).toSet()];
     final categories = ['Tümü', ..._categoryKeywords.keys, 'Diğer'];
 
     return Column(
@@ -517,6 +561,45 @@ class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
                   constraints: const BoxConstraints(),
                   onPressed: () => setState(() => _searchFilter = ''),
                 ),
+            ],
+          ),
+        ),
+        // Ülke Filtreleme Çubuğu
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          child: Row(
+            children: [
+              const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.public, size: 16, color: Color(0xFF003399)),
+                  SizedBox(width: 4),
+                  Text('Ülke:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  SizedBox(width: 6),
+                ],
+              ),
+              ..._countryMap.entries.map((entry) {
+                final isSel = _selectedCountry == entry.key;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: FilterChip(
+                    label: Text(
+                      entry.value,
+                      style: TextStyle(fontSize: 11, fontWeight: isSel ? FontWeight.bold : FontWeight.normal, color: isSel ? Colors.white : Colors.black87),
+                    ),
+                    selected: isSel,
+                    selectedColor: const Color(0xFF003399),
+                    checkmarkColor: Colors.white,
+                    onSelected: (selected) {
+                      setState(() {
+                        _selectedCountry = selected ? entry.key : 'Tümü';
+                        _selectedStore = 'Tümü'; // Ülke değişince mağazayı sıfırla
+                      });
+                    },
+                  ),
+                );
+              }),
             ],
           ),
         ),
