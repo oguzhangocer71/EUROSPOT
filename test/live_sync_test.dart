@@ -9,19 +9,19 @@ void main() {
 
     expect(response.statusCode, 200, reason: 'GitHub veri akisi erisilebilir olmali');
     
-    final data = json.decode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-    expect(data.containsKey('deals'), isTrue, reason: 'JSON icinde deals listesi bulunmali');
-    
-    final deals = data['deals'] as List<dynamic>;
+    final decoded = json.decode(utf8.decode(response.bodyBytes));
+    final List<dynamic> deals = decoded is List ? decoded : (decoded['deals'] as List<dynamic>? ?? []);
     expect(deals.isNotEmpty, isTrue, reason: 'En az bir adet indirimli urun olmali');
 
     // Ornek ilk 3 urunu dogrula
     for (int i = 0; i < 3 && i < deals.length; i++) {
-      final item = deals[i];
-      expect(item['name'], isNotNull);
-      expect(item['store'], isNotNull);
-      expect(item['originalPrice'], isNotNull);
-      expect(item['discountedPrice'], isNotNull);
+      final item = deals[i] as Map<String, dynamic>;
+      final title = item['name'] ?? item['title'];
+      final store = item['store'];
+      final price = item['discountedPrice'] ?? item['price'];
+      expect(title, isNotNull, reason: 'Urun ismi bos olamaz');
+      expect(store, isNotNull, reason: 'Magaza adi bos olamaz');
+      expect(price, isNotNull, reason: 'Fiyat bos olamaz');
     }
   });
 }

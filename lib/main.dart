@@ -159,29 +159,26 @@ class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
 
   Future<void> _loadData() async {
     try {
-      // Eger veritabaninda sadece eski 4 ilk surum urun kalmissa otomatik guncelle
-      final deals = await DatabaseService.instance.getAllDeals();
+      var deals = await DatabaseService.instance.getAllDeals();
+      // Eger veritabani bossa veya sadece birkac eski demo urun varsa dogrudan sync yap
       final hasOldInitial = deals.any((d) => d.name == 'Müllermilch Schoko/Erdbeer' || d.name == 'Barissimo Löslicher Kaffee Gold');
-      if (hasOldInitial && deals.length <= 10) {
+      if (deals.isEmpty || (hasOldInitial && deals.length <= 10)) {
         await DatabaseService.instance.clearAllDeals();
         await SyncService.instance.fetchAndSyncDeals();
-        final freshDeals = await DatabaseService.instance.getAllDeals();
-        if (mounted) {
-          setState(() {
-            _discounts = freshDeals;
-            _isLoading = false;
-          });
-        }
-        return;
+        deals = await DatabaseService.instance.getAllDeals();
       }
-      setState(() {
-        _discounts = deals;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _discounts = deals;
+          _isLoading = false;
+        });
+      }
     } catch (_) {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

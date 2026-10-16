@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'database_service.dart';
@@ -50,13 +51,19 @@ class SyncService {
 
         final items = list.map((item) {
           final map = item as Map<String, dynamic>;
+          final title = map['name'] as String? ?? map['title'] as String? ?? 'Bilinmeyen Ürün';
+          final store = map['store'] as String? ?? 'Genel';
+          final orig = (map['originalPrice'] as num?)?.toDouble() ?? (map['original_price'] as num?)?.toDouble() ?? 0.0;
+          final disc = (map['discountedPrice'] as num?)?.toDouble() ?? (map['price'] as num?)?.toDouble() ?? 0.0;
+          final unit = map['unit'] as String? ?? map['category'] as String? ?? '1 Adet';
+          final dist = map['distance'] as String? ?? 'Bölgesel';
           return LocalDiscountItem(
-            name: map['name'] as String? ?? 'Bilinmeyen Ürün',
-            store: map['store'] as String? ?? 'Genel',
-            originalPrice: (map['originalPrice'] as num?)?.toDouble() ?? 0.0,
-            discountedPrice: (map['discountedPrice'] as num?)?.toDouble() ?? 0.0,
-            unit: map['unit'] as String? ?? '1 Adet',
-            distance: map['distance'] as String? ?? 'Bölgesel',
+            name: title,
+            store: store,
+            originalPrice: orig > 0 ? orig : disc * 1.2,
+            discountedPrice: disc > 0 ? disc : orig,
+            unit: unit,
+            distance: dist,
             eveningClearance: map['eveningClearance'] == true || map['eveningClearance'] == 1,
           );
         }).toList();
@@ -86,6 +93,39 @@ class SyncService {
   }
 
   Future<SyncResult> _fallbackSync(String reason) async {
+    try {
+      final jsonString = await rootBundle.loadString('assets/data/germany_deals.json');
+      final decoded = json.decode(jsonString);
+      final List<dynamic> list = decoded is List ? decoded : (decoded['deals'] as List? ?? []);
+      final items = list.map((item) {
+        final map = item as Map<String, dynamic>;
+        final title = map['name'] as String? ?? map['title'] as String? ?? 'Bilinmeyen Ürün';
+        final store = map['store'] as String? ?? 'Genel';
+        final orig = (map['originalPrice'] as num?)?.toDouble() ?? (map['original_price'] as num?)?.toDouble() ?? 0.0;
+        final disc = (map['discountedPrice'] as num?)?.toDouble() ?? (map['price'] as num?)?.toDouble() ?? 0.0;
+        final unit = map['unit'] as String? ?? map['category'] as String? ?? '1 Adet';
+        final dist = map['distance'] as String? ?? 'Bölgesel';
+        return LocalDiscountItem(
+          name: title,
+          store: store,
+          originalPrice: orig > 0 ? orig : disc * 1.2,
+          discountedPrice: disc > 0 ? disc : orig,
+          unit: unit,
+          distance: dist,
+          eveningClearance: map['eveningClearance'] == true || map['eveningClearance'] == 1,
+        );
+      }).toList();
+      if (items.isNotEmpty) {
+        await DatabaseService.instance.clearAllDeals();
+        final count = await DatabaseService.instance.syncDeals(items);
+        return SyncResult(
+          success: true,
+          message: '$count adet yerel paketli güncel fırsat başarıyla yüklendi.',
+          count: count,
+        );
+      }
+    } catch (_) {}
+
     // Çevrimdışı ya da uzak sunucu gecikmesinde dinamik güncel fırsatlar
     final fallbackDeals = [
       LocalDiscountItem(
