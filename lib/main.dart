@@ -49,9 +49,39 @@ class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
   List<LocalDiscountItem> _discounts = [];
   bool _isLoading = true;
   bool _isSyncing = false;
-  String _selectedCountry = 'Tümü';
   String _selectedStore = 'Tümü';
+  String _selectedCategory = 'Tümü';
+  String _selectedPriceRange = 'Tümü';
   String _searchFilter = '';
+
+  static const List<String> _priceRanges = [
+    'Tümü',
+    '1 - 10 €',
+    '10 - 50 €',
+    '50 - 100 €',
+    '100 € Üstü',
+  ];
+
+  static const Map<String, List<String>> _categoryKeywords = {
+    'Süt & Kahvaltılık': ['milch', 'süt', 'gouda', 'kaas', 'peynir', 'cheese', 'quark', 'fromage', 'camembert', 'twaróg', 'eier', 'yumurta', 'butter', 'nutella', 'waffle', 'stroopwafel', 'croissant', 'bergkäse', 'parmigiano'],
+    'Et & Şarküteri': ['hähnchen', 'tavuk', 'fleisch', 'et', 'hackfleisch', 'kıyma', 'jamón', 'kiełbasa', 'sosis', 'rindfleisch', 'dana', 'filet'],
+    'Fırın & Ekmek': ['brot', 'ekmek', 'baguette', 'croissant', 'waffle'],
+    'Temel Gıda & Makarna': ['spaghetti', 'makarna', 'barilla', 'reis', 'pirinç', 'öl', 'oliva', 'zeytinyağı', 'zucker', 'şeker', 'mehl', 'un'],
+    'İçecek & Kahve': ['kaffee', 'kahve', 'caffe', 'lavazza', 'espresso', 'wasser', 'su', 'mineralwasser', 'cola', 'çay', 'tee', 'saft', 'meyve suyu'],
+    'Temizlik & Ev': ['ariel', 'pods', 'deterjan', 'yıkama', 'reiniger', 'sabun', 'şampuan', 'persil', 'finish'],
+  };
+
+  String _detectCategory(String productName) {
+    final lower = productName.toLowerCase();
+    for (final entry in _categoryKeywords.entries) {
+      for (final keyword in entry.value) {
+        if (lower.contains(keyword)) {
+          return entry.key;
+        }
+      }
+    }
+    return 'Diğer';
+  }
 
   Future<void> _syncDeals() async {
     setState(() => _isSyncing = true);
@@ -355,6 +385,22 @@ class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
       if (_selectedStore != 'Tümü' && !d.store.toLowerCase().contains(_selectedStore.toLowerCase())) {
         return false;
       }
+      if (_selectedCategory != 'Tümü') {
+        final cat = _detectCategory(d.name);
+        if (cat != _selectedCategory) return false;
+      }
+      if (_selectedPriceRange != 'Tümü') {
+        final price = d.discountedPrice;
+        if (_selectedPriceRange == '1 - 10 €') {
+          if (price < 1.0 || price > 10.0) return false;
+        } else if (_selectedPriceRange == '10 - 50 €') {
+          if (price < 10.0 || price > 50.0) return false;
+        } else if (_selectedPriceRange == '50 - 100 €') {
+          if (price < 50.0 || price > 100.0) return false;
+        } else if (_selectedPriceRange == '100 € Üstü') {
+          if (price <= 100.0) return false;
+        }
+      }
       if (_searchFilter.isNotEmpty) {
         final query = _searchFilter.toLowerCase();
         final matchName = d.name.toLowerCase().contains(query);
@@ -366,6 +412,7 @@ class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
     }).toList();
 
     final stores = ['Tümü', ..._discounts.map((d) => d.store).toSet()];
+    final categories = ['Tümü', ..._categoryKeywords.keys, 'Diğer'];
 
     return Column(
       children: [
@@ -403,24 +450,101 @@ class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
             ],
           ),
         ),
+        // Kategori Filtreleme Çubuğu
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
           child: Row(
-            children: stores.map((s) {
-              final isSel = _selectedStore == s;
-              return Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: ChoiceChip(
-                  label: Text(s, style: TextStyle(fontSize: 12, color: isSel ? Colors.white : Colors.black87)),
-                  selected: isSel,
-                  selectedColor: const Color(0xFF003399),
-                  onSelected: (selected) {
-                    setState(() => _selectedStore = selected ? s : 'Tümü');
-                  },
-                ),
-              );
-            }).toList(),
+            children: [
+              const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.category_outlined, size: 16, color: Color(0xFF003399)),
+                  SizedBox(width: 4),
+                  Text('Kategori:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  SizedBox(width: 6),
+                ],
+              ),
+              ...categories.map((c) {
+                final isSel = _selectedCategory == c;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: FilterChip(
+                    label: Text(c, style: TextStyle(fontSize: 11, color: isSel ? Colors.white : Colors.black87)),
+                    selected: isSel,
+                    selectedColor: const Color(0xFF003399),
+                    checkmarkColor: Colors.white,
+                    onSelected: (selected) {
+                      setState(() => _selectedCategory = selected ? c : 'Tümü');
+                    },
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+        // Fiyat Aralığı Filtreleme Çubuğu
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          child: Row(
+            children: [
+              const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.euro, size: 16, color: Colors.green),
+                  SizedBox(width: 4),
+                  Text('Fiyat:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  SizedBox(width: 6),
+                ],
+              ),
+              ..._priceRanges.map((p) {
+                final isSel = _selectedPriceRange == p;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: ChoiceChip(
+                    label: Text(p, style: TextStyle(fontSize: 11, color: isSel ? Colors.white : Colors.black87)),
+                    selected: isSel,
+                    selectedColor: Colors.green.shade700,
+                    onSelected: (selected) {
+                      setState(() => _selectedPriceRange = selected ? p : 'Tümü');
+                    },
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+        // Market Filtreleme Çubuğu
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          child: Row(
+            children: [
+              const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.storefront_outlined, size: 16, color: Colors.orange),
+                  SizedBox(width: 4),
+                  Text('Market:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  SizedBox(width: 6),
+                ],
+              ),
+              ...stores.map((s) {
+                final isSel = _selectedStore == s;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: ChoiceChip(
+                    label: Text(s, style: TextStyle(fontSize: 11, color: isSel ? Colors.white : Colors.black87)),
+                    selected: isSel,
+                    selectedColor: Colors.orange.shade800,
+                    onSelected: (selected) {
+                      setState(() => _selectedStore = selected ? s : 'Tümü');
+                    },
+                  ),
+                );
+              }),
+            ],
           ),
         ),
         Expanded(
