@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'database_service.dart';
 import 'assistant_engine.dart';
 import 'sync_service.dart';
@@ -732,7 +733,42 @@ class _EuroSpotMainScreenState extends State<EuroSpotMainScreen> {
                               ),
                           ],
                         ),
-                        subtitle: Text('${item.store} • ${item.distance} • ${item.unit}'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${item.store} • ${item.distance} • ${item.unit}'),
+                            if (item.source.isNotEmpty) ...[
+                              const SizedBox(height: 3),
+                              InkWell(
+                                onTap: () async {
+                                  final uri = Uri.tryParse(item.source);
+                                  if (uri != null) {
+                                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                  }
+                                },
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.open_in_new, size: 11, color: Color(0xFF003399)),
+                                    const SizedBox(width: 3),
+                                    Flexible(
+                                      child: Text(
+                                        item.source,
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: Color(0xFF003399),
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [

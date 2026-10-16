@@ -65,6 +65,7 @@ class SyncService {
             unit: unit,
             distance: dist,
             eveningClearance: map['eveningClearance'] == true || map['eveningClearance'] == 1,
+            source: map['source'] as String? ?? '',
           );
         }).toList();
 
@@ -113,6 +114,7 @@ class SyncService {
           unit: unit,
           distance: dist,
           eveningClearance: map['eveningClearance'] == true || map['eveningClearance'] == 1,
+          source: map['source'] as String? ?? '',
         );
       }).toList();
       if (items.isNotEmpty) {

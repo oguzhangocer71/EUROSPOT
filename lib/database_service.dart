@@ -11,6 +11,7 @@ class LocalDiscountItem {
   final String distance;
   final bool eveningClearance;
   final bool inCart;
+  final String source;
 
   LocalDiscountItem({
     this.id,
@@ -22,6 +23,7 @@ class LocalDiscountItem {
     required this.distance,
     this.eveningClearance = false,
     this.inCart = false,
+    this.source = '',
   });
 
   double get savings => originalPrice - discountedPrice;
@@ -37,6 +39,7 @@ class LocalDiscountItem {
       'distance': distance,
       'eveningClearance': eveningClearance ? 1 : 0,
       'inCart': inCart ? 1 : 0,
+      'source': source,
     };
   }
 
@@ -51,6 +54,7 @@ class LocalDiscountItem {
       distance: map['distance'] as String,
       eveningClearance: (map['eveningClearance'] as int) == 1,
       inCart: (map['inCart'] as int) == 1,
+      source: (map['source'] as String?) ?? '',
     );
   }
 
@@ -65,6 +69,7 @@ class LocalDiscountItem {
       distance: distance,
       eveningClearance: eveningClearance,
       inCart: inCart ?? this.inCart,
+      source: source,
     );
   }
 }
@@ -103,7 +108,8 @@ class DatabaseService {
         unit TEXT NOT NULL,
         distance TEXT NOT NULL,
         eveningClearance INTEGER NOT NULL,
-        inCart INTEGER NOT NULL
+        inCart INTEGER NOT NULL,
+        source TEXT DEFAULT ''
       )
     ''');
 

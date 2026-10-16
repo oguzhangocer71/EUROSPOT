@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'localization_service.dart';
 
 class StoreLocation {
@@ -9,6 +12,9 @@ class StoreLocation {
   final String distance;
   final String hours;
   final double rating;
+  final double lat;
+  final double lng;
+  final Color markerColor;
 
   const StoreLocation({
     required this.name,
@@ -18,6 +24,9 @@ class StoreLocation {
     required this.distance,
     required this.hours,
     required this.rating,
+    required this.lat,
+    required this.lng,
+    required this.markerColor,
   });
 }
 
@@ -32,6 +41,8 @@ class StoreLocatorScreen extends StatefulWidget {
 
 class _StoreLocatorScreenState extends State<StoreLocatorScreen> {
   String _selectedChain = 'Tümü';
+  final MapController _mapController = MapController();
+  StoreLocation? _selectedStoreOnMap;
 
   static const List<StoreLocation> _mockStores = [
     StoreLocation(
@@ -42,6 +53,9 @@ class _StoreLocatorScreenState extends State<StoreLocatorScreen> {
       distance: '350 m',
       hours: '07:00 - 21:00',
       rating: 4.5,
+      lat: 48.1395,
+      lng: 11.5585,
+      markerColor: Color(0xFF0050AA),
     ),
     StoreLocation(
       name: 'Rewe City Center',
@@ -51,6 +65,9 @@ class _StoreLocatorScreenState extends State<StoreLocatorScreen> {
       distance: '600 m',
       hours: '07:00 - 22:00',
       rating: 4.6,
+      lat: 48.1392,
+      lng: 11.5660,
+      markerColor: Color(0xFFCC0000),
     ),
     StoreLocation(
       name: 'Aldi Süd Ostbahnhof',
@@ -60,6 +77,9 @@ class _StoreLocatorScreenState extends State<StoreLocatorScreen> {
       distance: '850 m',
       hours: '08:00 - 20:00',
       rating: 4.3,
+      lat: 48.1285,
+      lng: 11.6045,
+      markerColor: Color(0xFF00205B),
     ),
     StoreLocation(
       name: 'Edeka Center Schwabing',
@@ -69,6 +89,9 @@ class _StoreLocatorScreenState extends State<StoreLocatorScreen> {
       distance: '1.2 km',
       hours: '07:30 - 20:00',
       rating: 4.7,
+      lat: 48.1610,
+      lng: 11.5870,
+      markerColor: Color(0xFF003882),
     ),
     StoreLocation(
       name: 'Kaufland Neuperlach',
@@ -78,6 +101,9 @@ class _StoreLocatorScreenState extends State<StoreLocatorScreen> {
       distance: '2.1 km',
       hours: '07:00 - 22:00',
       rating: 4.4,
+      lat: 48.1020,
+      lng: 11.6460,
+      markerColor: Color(0xFFD40000),
     ),
     StoreLocation(
       name: 'Penny Markt Westend',
@@ -87,13 +113,40 @@ class _StoreLocatorScreenState extends State<StoreLocatorScreen> {
       distance: '1.5 km',
       hours: '07:00 - 20:00',
       rating: 4.1,
+      lat: 48.1360,
+      lng: 11.5340,
+      markerColor: Color(0xFFC00000),
+    ),
+    StoreLocation(
+      name: 'Carrefour Express République',
+      chain: 'Carrefour',
+      address: 'Place de la République, 75003 Paris',
+      city: 'Paris',
+      distance: '2.8 km',
+      hours: '08:00 - 22:00',
+      rating: 4.3,
+      lat: 48.8675,
+      lng: 2.3638,
+      markerColor: Color(0xFF004E98),
+    ),
+    StoreLocation(
+      name: 'Albert Heijn Damrak',
+      chain: 'Albert Heijn',
+      address: 'Damrak 89, 1012 LP Amsterdam',
+      city: 'Amsterdam',
+      distance: '1.9 km',
+      hours: '07:00 - 22:00',
+      rating: 4.5,
+      lat: 52.3738,
+      lng: 4.8936,
+      markerColor: Color(0xFF00A0E2),
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
     final s = LocalizationService.instance.strings;
-    final chains = ['Tümü', 'Lidl', 'Rewe', 'Aldi Süd', 'Edeka', 'Kaufland', 'Penny'];
+    final chains = ['Tümü', 'Lidl', 'Rewe', 'Aldi Süd', 'Edeka', 'Kaufland', 'Penny', 'Carrefour', 'Albert Heijn'];
 
     final filtered = _mockStores.where((store) {
       if (_selectedChain != 'Tümü' && store.chain != _selectedChain) {
@@ -104,102 +157,158 @@ class _StoreLocatorScreenState extends State<StoreLocatorScreen> {
 
     return Column(
       children: [
-        // Interaktif Radar / Harita Temsili Banner
+        // Tam Aktif OpenStreetMap Canlı Harita
         Container(
-          margin: const EdgeInsets.all(12),
-          padding: const EdgeInsets.all(16),
+          height: 250,
+          margin: const EdgeInsets.fromLTRB(12, 10, 12, 6),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF003399), Color(0xFF002266)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.12),
+                color: Colors.black.withOpacity(0.15),
                 blurRadius: 8,
-                offset: const Offset(0, 4),
+                offset: const Offset(0, 3),
               ),
             ],
           ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.near_me, color: Color(0xFFFFCC00), size: 24),
-                      const SizedBox(width: 8),
-                      Text(
-                        s.mapTab,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Stack(
+              children: [
+                FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: const LatLng(48.1375, 11.5755), // Münih Merkez
+                    initialZoom: 12.5,
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.eurospot.app',
+                    ),
+                    MarkerLayer(
+                      markers: filtered.map((store) {
+                        final isSelected = _selectedStoreOnMap == store;
+                        return Marker(
+                          point: LatLng(store.lat, store.lng),
+                          width: 80,
+                          height: 55,
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedStoreOnMap = store;
+                              });
+                            },
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? const Color(0xFFFFCC00) : store.markerColor,
+                                    borderRadius: BorderRadius.circular(8),
+                                    boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 4)],
+                                  ),
+                                  child: Text(
+                                    store.chain,
+                                    style: TextStyle(
+                                      color: isSelected ? Colors.black : Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.location_on,
+                                  color: isSelected ? const Color(0xFFFFCC00) : store.markerColor,
+                                  size: isSelected ? 30 : 24,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+                // Harita Bilgi Rozeti
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: Colors.green.shade600,
+                      color: const Color(0xFF003399).withOpacity(0.9),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.circle, color: Colors.white, size: 8),
+                        const Icon(Icons.location_searching, color: Color(0xFFFFCC00), size: 14),
                         const SizedBox(width: 4),
                         Text(
-                          '${filtered.length} Aktif Şube',
+                          '${filtered.length} Şube Haritada',
                           style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Simüle Edilmiş Harita Göstergesi
-              Container(
-                height: 100,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white.withOpacity(0.2)),
                 ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    const Icon(Icons.radar, color: Color(0xFFFFCC00), size: 64),
-                    Positioned(
-                      top: 15,
-                      left: 40,
-                      child: _buildPin('Lidl', Colors.yellow.shade700),
+                // Haritada Seçili Şube Kartı
+                if (_selectedStoreOnMap != null)
+                  Positioned(
+                    bottom: 10,
+                    left: 10,
+                    right: 10,
+                    child: Card(
+                      color: Colors.white,
+                      elevation: 6,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: _selectedStoreOnMap!.markerColor,
+                              radius: 16,
+                              child: const Icon(Icons.store, color: Colors.white, size: 16),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _selectedStoreOnMap!.name,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    '${_selectedStoreOnMap!.address} • ${_selectedStoreOnMap!.hours}',
+                                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                    maxLines: 1,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.directions, color: Color(0xFF003399)),
+                              onPressed: () async {
+                                final uri = Uri.parse(
+                                  'https://www.google.com/maps/search/?api=1&query=${_selectedStoreOnMap!.lat},${_selectedStoreOnMap!.lng}',
+                                );
+                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    Positioned(
-                      bottom: 20,
-                      right: 50,
-                      child: _buildPin('Rewe', Colors.redAccent),
-                    ),
-                    Positioned(
-                      top: 30,
-                      right: 80,
-                      child: _buildPin('Aldi', Colors.lightBlue),
-                    ),
-                    Positioned(
-                      bottom: 15,
-                      left: 70,
-                      child: _buildPin('Edeka', Colors.blue.shade900),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                  ),
+              ],
+            ),
           ),
         ),
 
